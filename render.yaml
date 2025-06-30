@@ -1,0 +1,35 @@
+services:
+  # 1. The PostgreSQL Database
+  - type: psql
+    name: garage-db
+    plan: free # You can change this to a paid plan for more resources
+    version: "14"
+
+  # 2. The Flask Web Service
+  - type: web
+    name: garage-api
+    plan: free # You can change this to a paid plan for more resources
+    env: python
+    buildCommand: "pip install -r requirements.txt"
+    startCommand: "gunicorn 'app:create_app(\"production\")'"
+    healthCheckPath: /api/garages # A simple public endpoint to check if the app is alive
+    envVars:
+      - key: FLASK_APP
+        value: "app:create_app"
+      - key: FLASK_ENV
+        value: production
+      # This connects the web service to the database defined above.
+      # Render injects the real database URL automatically.
+      - key: DATABASE_URL
+        fromService:
+          type: psql
+          name: garage-db
+          property: connectionString
+      # IMPORTANT: You must set your JWT_SECRET_KEY in the Render UI for security.
+      # Do not hardcode it here.
+      - key: JWT_SECRET_KEY
+        sync: false
+
+    # Automatically run database migrations on every deploy
+    # This ensures your schema is always up-to-date.
+    preDeployCommand: "flask db upgrade"
